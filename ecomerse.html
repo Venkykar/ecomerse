@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Venky E-Shop — Single File SPA</title>
+  <meta name="description" content="All-in-one SPA e-commerce demo — Home, Products, Product, Cart, About, Contact, Admin. LocalStorage cart.">
+  <style>
+    /* ========= CSS: Variables & Reset ========= */
+    :root{
+      --bg:#f6f8fb; --card:#fff; --muted:#64748b; --accent:#0b73ff; --accent-2:#06b6d4; --dark:#0f172a;
+      --radius:12px; --shadow: 0 12px 30px rgba(2,6,23,0.08); --container:1150px; --gap:16px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#fff);color:var(--dark);-webkit-font-smoothing:antialiased;}
+    a{color:inherit}
+    img{max-width:100%;display:block}
+    .container{width:92%;max-width:var(--container);margin:18px auto;padding:0}
+
+    /* ========= Header ========= */
+    header.site-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;position:sticky;top:6px;background:transparent;z-index:50}
+    .brand{display:flex;gap:12px;align-items:center;text-decoration:none;color:inherit}
+    .logo{width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:900;box-shadow:var(--shadow)}
+    nav.nav{display:flex;gap:10px;align-items:center}
+    nav.nav button{background:transparent;border:0;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:700;color:var(--muted)}
+    nav.nav button:hover{color:var(--accent)}
+    .actions{display:flex;gap:8px;align-items:center}
+    .icon-btn{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);background:var(--card);cursor:pointer}
+    .cart-badge{background:#ff4d6d;color:white;padding:4px 7px;border-radius:999px;font-weight:700;margin-left:6px;font-size:12px}
+
+    /* ========= Layout / Hero ========= */
+    .hero{display:grid;grid-template-columns:1fr 420px;gap:20px;align-items:center;margin-bottom:12px}
+    @media(max-width:920px){.hero{grid-template-columns:1fr}.hero-right{display:none}}
+    .hero-card{background:var(--card);padding:20px;border-radius:16px;box-shadow:var(--shadow);display:flex;gap:18px;align-items:center;justify-content:space-between}
+    .hero h1{margin:0;font-size:22px}
+    .hero p{margin:6px 0;color:var(--muted)}
+    .search-row{display:flex;gap:8px;margin-top:12px}
+    .search-row input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);outline:none}
+    .search-row button{padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:white;font-weight:800;cursor:pointer}
+
+    /* ========= Categories ========= */
+    .categories{display:flex;gap:10px;overflow:auto;padding:12px 0;margin:12px 0}
+    .category{background:var(--card);padding:8px 12px;border-radius:999px;box-shadow:var(--shadow);font-weight:800;color:var(--muted);cursor:pointer}
+    .category.active{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;transform:translateY(-3px)}
+
+    /* ========= Grid / Cards ========= */
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    @media(min-width:760px){.grid{grid-template-columns:repeat(3,1fr)}}
+    @media(min-width:1100px){.grid{grid-template-columns:repeat(4,1fr)}}
+    .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:transform .18s ease}
+    .card:hover{transform:translateY(-6px)}
+    .card img{height:180px;object-fit:cover}
+    .card-body{padding:12px;display:flex;flex-direction:column;gap:8px;flex:1}
+    .card h3{margin:0;font-size:15px}
+    .muted{color:var(--muted);font-size:13px}
+    .price-row{display:flex;align-items:center;justify-content:space-between}
+    .price{font-weight:800}
+
+    .card-actions{display:flex;gap:8px;margin-top:auto}
+    .outline{flex:1;padding:8px;border-radius:10px;border:1px solid rgba(15,23,42,0.06);background:transparent;cursor:pointer;font-weight:700}
+    .primary{flex:1;padding:8px;border-radius:10px;border:0;background:var(--accent);color:white;cursor:pointer;font-weight:800}
+
+    /* ========= Sidebar Panels (Cart + Admin) ========= */
+    .layout{display:grid;grid-template-columns:1fr 360px;gap:18px}
+    @media(max-width:1120px){.layout{grid-template-columns:1fr}}
+    .panel{background:var(--card);padding:14px;border-radius:12px;box-shadow:var(--shadow)}
+    .cart-item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(15,23,42,0.04)}
+    .cart-item img{width:70px;height:52px;object-fit:cover;border-radius:8px}
+    .qty-controls{display:flex;flex-direction:column;gap:6px}
+
+    /* ========= Modal ========= */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(2,6,23,0.5);display:none;align-items:center;justify-content:center;padding:20px;z-index:80}
+    .modal{background:var(--card);width:100%;max-width:900px;border-radius:14px;padding:16px;box-shadow:0 30px 60px rgba(2,6,23,0.2)}
+    .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:820px){.modal-grid{grid-template-columns:1fr}}
+
+    /* ========= Product Detail (section) ========= */
+    .product-detail{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:900px){.product-detail{grid-template-columns:1fr 1fr}}
+    .product-detail img{width:100%;height:420px;object-fit:cover;border-radius:10px}
+
+    /* ========= Forms / Footer ========= */
+    input, textarea, select{padding:10px;border-radius:8px;border:1px solid rgba(15,23,42,0.06);width:100%}
+    .contact-form{display:flex;flex-direction:column;gap:8px}
+    footer.site-footer{margin-top:18px;color:var(--muted);font-size:14px;text-align:center;padding:12px 0}
+
+    /* small helpers */
+    .hidden{display:none}
+    .center{display:grid;place-items:center}
+    .flex{display:flex;gap:8px;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="container" id="app">
+
+    <!-- HEADER -->
+    <header class="site-header" role="banner">
+      <a class="brand" href="#" onclick="navTo('home')">
+        <div class="logo">VK</div>
+        <div>
+          <div style="font-weight:900">Venky E-Shop</div>
+          <div class="muted">Portfolio • Full-stack ready</div>
+        </div>
+      </a>
+
+      <nav class="nav" role="navigation" aria-label="Main navigation">
+        <button onclick="navTo('home')">Home</button>
+        <button onclick="navTo('products')">Products</button>
+        <button onclick="navTo('about')">About</button>
+        <button onclick="navTo('contact')">Contact</button>
+        <button onclick="toggleAdmin()">Admin</button>
+      </nav>
+
+      <div class="actions">
+        <button class="icon-btn" title="Wishlist">♡</button>
+        <button class="icon-btn" id="cartBtn" title="Cart" onclick="navTo('cart')">🛒 <span id="cartCount" class="cart-badge">0</span></button>
+      </div>
+    </header>
+
+    <!-- MAIN: SPA sections (Home, Products, ProductDetail, Cart, About, Contact) -->
+    <main>
+
+      <!-- HOME -->
+      <section id="home" class="home-section">
+        <div class="hero">
+          <div class="hero-card">
+            <div>
+              <h1>Shop smart. Learn and grow — portfolio ready.</h1>
+              <p class="muted">A single-file SPA demo for your major project. Browse products, filter, add to cart, and try the admin add-product feature.</p>
+
+              <div class="search-row" style="max-width:720px">
+                <input id="searchTop" placeholder="Search products..." oninput="debouncedSearch()" aria-label="Search products">
+                <button onclick="doSearch()">Search</button>
+              </div>
+
+              <div id="topCategories" class="categories" style="margin-top:12px"></div>
+            </div>
+
+            <div class="hero-right center">
+              <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=720&auto=format&fit=crop&ixlib=rb-4.0.3&s=ea9b5d4d5e4f7d5c0d6bcbf3b6a697d7" alt="hero">
+            </div>
+          </div>
+        </div>
+
+        <section style="margin-top:18px">
+          <h2>Featured Products</h2>
+          <div id="featuredGrid" class="grid"></div>
+        </section>
+      </section>
+
+      <!-- PRODUCTS -->
+      <section id="products" class="hidden">
+        <div class="panel">
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <input id="search" placeholder="Search products..." oninput="debouncedSearch()" style="flex:1;min-width:220px">
+            <select id="categoryFilter" style="min-width:160px" onchange="renderProducts()">
+              <option value="all">All categories</option>
+            </select>
+            <select id="sortBy" onchange="renderProducts()" style="min-width:160px">
+              <option value="default">Sort: Recommended</option>
+              <option value="price-asc">Price: Low → High</option>
+              <option value="price-desc">Price: High → Low</option>
+            </select>
+            <div style="margin-left:auto" class="flex">
+              <button class="primary" onclick="resetProducts()">Reset Products</button>
+              <button class="outline" onclick="navTo('cart')">View Cart</button>
+            </div>
+          </div>
+        </div>
+
+        <section style="margin-top:12px">
+          <h2>All Products</h2>
+          <div id="productsGrid" class="grid"></div>
+          <div id="noResults" class="muted center" style="padding:24px;display:none">No products found.</div>
+        </section>
+      </section>
+
+      <!-- PRODUCT DETAIL (dynamic) -->
+      <section id="productDetail" class="hidden">
+        <div class="panel product-detail" id="productDetailPanel"></div>
+      </section>
+
+      <!-- CART -->
+      <section id="cart" class="hidden">
+        <div class="panel">
+          <h2>Your Cart</h2>
+          <div id="cartItems"></div>
+          <div id="cartSummary" style="margin-top:12px"></div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="primary" onclick="checkout()">Place Order (Demo)</button>
+            <button class="outline" onclick="clearCart()">Clear Cart</button>
+            <button class="outline" onclick="navTo('products')">Continue Shopping</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ABOUT -->
+      <section id="about" class="hidden">
+        <div class="panel">
+          <h2>About This Project</h2>
+          <p class="muted">This single-file SPA demonstrates a full multi-section frontend e-commerce experience (no backend). It's ideal for a portfolio or as the frontend starter for a full-stack conversion.</p>
+        </div>
+      </section>
+
+      <!-- CONTACT -->
+      <section id="contact" class="hidden">
+        <div class="panel">
+          <h2>Contact</h2>
+          <form id="contactForm" class="contact-form" onsubmit="submitContact(event)">
+            <label>Name</label>
+            <input id="contactName" required>
+            <label>Email</label>
+            <input id="contactEmail" type="email" required>
+            <label>Message</label>
+            <textarea id="contactMessage" rows="5" required></textarea>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="primary" type="submit">Send</button>
+              <button class="outline" type="button" onclick="document.getElementById('contactForm').reset()">Reset</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- SIDEBAR (Cart preview + Admin) -->
+    <aside style="margin-top:14px" class="layout hidden-mobile" id="sidebarArea">
+      <div class="panel" id="cartPanel">
+        <h3>Cart</h3>
+        <div id="cartPreview">
+          <div class="muted">Cart is empty</div>
+        </div>
+        <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+          <div class="muted">Total</div>
+          <div id="cartTotal" style="font-weight:800">₹0</div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="primary" onclick="navTo('cart')">Open Cart</button>
+          <button class="outline" onclick="clearCart()">Clear</button>
+        </div>
+      </div>
+
+      <div class="panel" id="adminPanel" style="display:none">
+        <h3>Admin — Add Product</h3>
+        <label>Title</label><input id="adminTitle" placeholder="Product title">
+        <label>Price (₹)</label><input id="adminPrice" type="number" placeholder="1999">
+        <label>Category</label><input id="adminCategory" placeholder="fashion / electronics">
+        <label>Image URL</label><input id="adminImg" placeholder="https://...">
+        <label>Description</label><textarea id="adminDesc" rows="3" placeholder="Short description"></textarea>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="primary" onclick="adminAddProduct()">Add Product</button>
+          <button class="outline" onclick="toggleAdmin()">Close</button>
+        </div>
+        <hr style="margin:12px 0">
+        <div class="muted">Admin changes persist in localStorage and will show on the Products section (client-side only).</div>
+      </div>
+    </aside>
+
+    <footer class="site-footer" style="margin-top:22px">
+      © 2025 Venky E-Shop — Built by Venky • Email: <a href="mailto:venkykarpuram777@gmail.com">venkykarpuram777@gmail.com</a>
+    </footer>
+  </div>
+
+  <!-- PRODUCT QUICK/MORE MODAL -->
+  <div id="modalBackdrop" class="modal-backdrop" onclick="closeModal(event)">
+    <div class="modal" role="dialog" aria-modal="true" aria-hidden="true" onclick="event.stopPropagation()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <h3 id="modalTitle">Product</h3>
+        <button onclick="closeModal()" style="background:transparent;border:0;font-size:20px;cursor:pointer">✕</button>
+      </div>
+      <div class="modal-grid" style="margin-top:12px">
+        <div id="modalImage" style="border-radius:10px;overflow:hidden"></div>
+        <div>
+          <div id="modalDesc" class="muted"></div>
+          <div style="margin-top:12px;font-weight:800;font-size:18px" id="modalPrice">₹0</div>
+          <div style="margin-top:12px;display:flex;gap:8px">
+            <button class="primary" id="modalAddBtn">Add to cart</button>
+            <button class="outline" onclick="copyProductLink()">Copy link</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= SCRIPT: All app logic ========= -->
+  <script>
+  /* ========= Data (edit sample products here) ========= */
+  const SAMPLE_PRODUCTS = [
+    { id:'p1', title:'Wireless Headphones', category:'electronics', price:2299, 
+      image:'https://images.unsplash.com/photo-1518444025466-20f2a3df48a7?auto=format&fit=crop&w=600&q=80',
+      desc:'High-quality sound • 20h battery' },
+
+    { id:'p2', title:'Classic Leather Jacket', category:'fashion', price:4999,
+      image:'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=600&q=80',
+      desc:'Modern fit • Suede finishing' },
+
+    { id:'p3', title:'Ceramic Coffee Mug Set', category:'home', price:899,
+      image:'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=600&q=80',
+      desc:'Microwave safe • 4 pcs' },
+
+    { id:'p4', title:'Minimal Wristwatch', category:'accessories', price:1799,
+      image:'https://images.unsplash.com/photo-1519744792095-2f2205e87b6f?auto=format&fit=crop&w=600&q=80',
+      desc:'Water resistant • 2-year battery' },
+
+    { id:'p5', title:'Casual Sneakers', category:'fashion', price:1299,
+      image:'https://images.unsplash.com/photo-1528701800489-4761be0f0c3a?auto=format&fit=crop&w=600&q=80',
+      desc:'Comfort sole • Breathable' },
+
+    { id:'p6', title:'Smart LED Lamp', category:'electronics', price:999,
+      image:'https://images.unsplash.com/photo-1509395176047-4a66953fd231?auto=format&fit=crop&w=600&q=80',
+      desc:'RGB • App control' }
+  ];
+
+  const STORAGE = { products: 'venky_products_v2', cart: 'venky_cart_v2', orders: 'venky_orders_v2', contacts: 'venky_contacts_v2' };
+
+  /* ========= App state ========= */
+  let products = loadProducts();
+  let cart = loadCart();
+  let activeCategory = 'all';
+  let currentView = 'home'; // home, products, productDetail, cart, about, contact
+  let productInView = null; // id
+  let searchQ = '';
+
+  /* ========= DOM refs ========= */
+  const sections = {
+    home: document.getElementById('home'),
+    products: document.getElementById('products'),
+    productDetail: document.getElementById('productDetail'),
+    cart: document.getElementById('cart'),
+    about: document.getElementById('about'),
+    contact: document.getElementById('contact')
+  };
+  const featuredGrid = document.getElementById('featuredGrid');
+  const topCategories = document.getElementById('topCategories');
+  const productsGrid = document.getElementById('productsGrid');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const cartPreview = document.getElementById('cartPreview');
+  const cartTotalEl = document.getElementById('cartTotal');
+  const cartCountEl = document.getElementById('cartCount');
+  const noResults = document.getElementById('noResults');
+
+  /* ========= Storage helpers ========= */
+  function loadProducts(){
+    const raw = localStorage.getItem(STORAGE.products);
+    if(!raw){ localStorage.setItem(STORAGE.products, JSON.stringify(SAMPLE_PRODUCTS)); return SAMPLE_PRODUCTS.slice(); }
+    try { return JSON.parse(raw); } catch { return SAMPLE_PRODUCTS.slice(); }
+  }
+  function saveProducts(){ localStorage.setItem(STORAGE.products, JSON.stringify(products)); }
+
+  function loadCart(){ const raw = localStorage.getItem(STORAGE.cart); return raw ? JSON.parse(raw) : []; }
+  function saveCart(){ localStorage.setItem(STORAGE.cart, JSON.stringify(cart)); updateCartUI(); }
+
+  /* ========= Rendering ========= */
+  function renderCategories(){
+    const cats = ['all', ...Array.from(new Set(products.map(p => p.category)))];
+    topCategories.innerHTML = '';
+    categoryFilter.innerHTML = '<option value="all">All categories</option>';
+    cats.forEach(c => {
+      // top pills
+      const pill = document.createElement('div');
+      pill.className = 'category' + (c === activeCategory ? ' active' : '');
+      pill.textContent = c === 'all' ? 'All' : capitalize(c);
+      pill.onclick = () => { activeCategory = c; renderCategories(); renderProducts(); };
+      topCategories.appendChild(pill);
+      // filter select
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c === 'all' ? 'All categories' : capitalize(c);
+      categoryFilter.appendChild(opt);
+    });
+    // set selected in filter
+    categoryFilter.value = activeCategory;
+  }
+
+  function renderFeatured(){
+    featuredGrid.innerHTML = '';
+    const ff = products.slice(0,8);
+    ff.forEach(p => featuredGrid.appendChild(createProductCard(p)));
+  }
+
+  function createProductCard(p){
+    const art = document.createElement('article');
+    art.className = 'card';
+    art.innerHTML = `
+      <img loading="lazy" src="${p.image}" alt="${escapeHtml(p.title)}">
+      <div class="card-body">
+        <h3>${escapeHtml(p.title)}</h3>
+        <div class="muted">${escapeHtml(p.category)}</div>
+        <div class="price-row">
+          <div class="price">₹${p.price}</div>
+          <div class="muted">★ ${p.rating || 4.5}</div>
+        </div>
+        <div class="card-actions">
+          <button class="outline" onclick="openProduct('${p.id}')">Quick view</button>
+          <button class="primary" onclick="addToCart('${p.id}')">Add to cart</button>
+        </div>
+      </div>
+    `;
+    return art;
+  }
+
+  function renderProducts(){
+    const q = (document.getElementById('search') ? document.getElementById('search').value.trim() : '') || searchQ || '';
+    const sort = document.getElementById('sortBy') ? document.getElementById('sortBy').value : 'default';
+    const cat = categoryFilter ? categoryFilter.value : activeCategory;
+    let list = products.slice();
+    if(cat && cat !== 'all') list = list.filter(x => x.category === cat);
+    if(q) list = list.filter(x => x.title.toLowerCase().includes(q.toLowerCase()) || (x.desc || '').toLowerCase().includes(q.toLowerCase()));
+    if(sort === 'price-asc') list.sort((a,b)=>a.price-b.price);
+    if(sort === 'price-desc') list.sort((a,b)=>b.price-a.price);
+
+    productsGrid.innerHTML = '';
+    if(list.length === 0){ noResults.style.display = 'block'; return; } else { noResults.style.display = 'none'; }
+    list.forEach(p => productsGrid.appendChild(createProductCard(p)));
+  }
+
+  function openProduct(id){
+    productInView = id;
+    const p = products.find(x => x.id === id);
+    if(!p) return alert('Product not found');
+    // render detail panel
+    const panel = document.getElementById('productDetailPanel');
+    panel.innerHTML = `
+      <div class="card"><img src="${p.image}" alt="${escapeHtml(p.title)}"></div>
+      <div class="card">
+        <h2>${escapeHtml(p.title)}</h2>
+        <div class="muted">${escapeHtml(p.category)}</div>
+        <p class="muted" style="margin-top:8px">${escapeHtml(p.desc)}</p>
+        <div style="margin-top:12px;font-weight:800;font-size:20px">₹${p.price}</div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="primary" onclick="addToCart('${p.id}')">Add to cart</button>
+          <button class="outline" onclick="navTo('products')">Back to Products</button>
+        </div>
+      </div>
+    `;
+    navTo('productDetail');
+  }
+
+  function renderCartPreview(){
+    cartPreview.innerHTML = '';
+    if(cart.length === 0){ cartPreview.innerHTML = '<div class="muted">Cart is empty</div>'; cartTotalEl.textContent = '₹0'; cartCountEl.textContent = '0'; return; }
+    let total = 0;
+    cart.forEach(it => { total += it.qty * it.price; const div = document.createElement('div'); div.className = 'cart-item'; div.innerHTML = `
+      <img src="${it.image}" alt="${escapeHtml(it.title)}">
+      <div style="flex:1">
+        <div style="font-weight:700">${escapeHtml(it.title)}</div>
+        <div class="muted">₹${it.price} × ${it.qty}</div>
+      </div>
+      <div class="qty-controls">
+        <button onclick="changeQty('${it.id}',1)">＋</button>
+        <button onclick="changeQty('${it.id}',-1)">－</button>
+      </div>`; cartPreview.appendChild(div); });
+    cartTotalEl.textContent = '₹' + total;
+    cartCountEl.textContent = cart.reduce((s,i)=>s+i.qty,0);
+  }
+
+  /* ========= Actions: Cart / Admin / Checkout ========= */
+  function addToCart(id){
+    const p = products.find(x=>x.id===id);
+    if(!p) return alert('Product not found');
+    const exist = cart.find(i => i.id === id);
+    if(exist) exist.qty++;
+    else cart.push({ id: p.id, title: p.title, price: p.price, image: p.image, qty: 1 });
+    saveCartState();
+    toast('Added to cart');
+    renderCartPreview();
+  }
+
+  function changeQty(id, delta){
+    const idx = cart.findIndex(i => i.id === id);
+    if(idx === -1) return;
+    cart[idx].qty += delta;
+    if(cart[idx].qty <= 0) cart.splice(idx,1);
+    saveCartState();
+    renderCartPreview();
+    renderCartPage();
+  }
+
+  function clearCart(){
+    if(!confirm('Clear cart?')) return;
+    cart = []; saveCartState(); renderCartPreview(); renderCartPage(); toast('Cart cleared');
+  }
+
+  function checkout(){
+    if(cart.length === 0) return alert('Cart is empty');
+    const orders = JSON.parse(localStorage.getItem(STORAGE.orders) || '[]');
+    const id = 'ORD-' + Date.now().toString(36);
+    const total = cart.reduce((s,i)=>s + i.price*i.qty, 0);
+    orders.push({ id, items: cart, total, createdAt: new Date().toISOString() });
+    localStorage.setItem(STORAGE.orders, JSON.stringify(orders));
+    cart = []; saveCartState(); renderCartPreview(); renderCartPage();
+    toast(`Order placed (${id}) — ₹${total}`);
+  }
+
+  function saveCartState(){ localStorage.setItem(STORAGE.cart, JSON.stringify(cart)); updateNavCount(); }
+
+  /* ========= Admin (client-side) ========= */
+  function toggleAdmin(){
+    const panel = document.getElementById('adminPanel');
+    panel.style.display = panel.style.display === 'none' || panel.style.display === '' ? 'block' : 'none';
+  }
+  function adminAddProduct(){
+    const title = document.getElementById('adminTitle').value.trim();
+    const price = Number(document.getElementById('adminPrice').value || 0);
+    const category = (document.getElementById('adminCategory').value || 'general').trim();
+    const img = document.getElementById('adminImg').value.trim() || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=720&auto=format&fit=crop&ixlib=rb-4.0.3&s=ea9b5d4d5e4f7d5c0d6bcbf3b6a697d7';
+    const desc = document.getElementById('adminDesc').value.trim();
+    if(!title || !price) return alert('Title and price required');
+    const id = 'p' + Date.now().toString(36);
+    const p = { id, title, category: category.toLowerCase(), price, image: img, desc };
+    products.unshift(p); saveProducts(); renderCategories(); renderProducts(); renderFeatured();
+    // clear inputs
+    document.getElementById('adminTitle').value=''; document.getElementById('adminPrice').value=''; document.getElementById('adminCategory').value=''; document.getElementById('adminImg').value=''; document.getElementById('adminDesc').value='';
+    toast('Product added (admin)');
+  }
+
+  function resetProducts(){
+    if(!confirm('Reset products to default sample? You will lose admin-added products.')) return;
+    products = SAMPLE_PRODUCTS.slice(); saveProducts(); renderCategories(); renderProducts(); renderFeatured(); toast('Products reset');
+  }
+
+  /* ========= Product modal (quick view) ========= */
+  const modalBackdrop = document.getElementById('modalBackdrop');
+  function openQuickModal(id){
+    const p = products.find(x=>x.id===id); if(!p) return;
+    document.getElementById('modalTitle').innerText = p.title;
+    document.getElementById('modalImage').innerHTML = `<img src="${p.image}" alt="${escapeHtml(p.title)}" style="width:100%;height:100%;object-fit:cover;border-radius:8px">`;
+    document.getElementById('modalDesc').innerText = p.desc || '';
+    document.getElementById('modalPrice').innerText = '₹' + p.price;
+    document.getElementById('modalAddBtn').onclick = () => { addToCart(p.id); closeModal(); };
+    modalBackdrop.style.display = 'flex';
+  }
+  function closeModal(e){
+    if(e && e.target !== modalBackdrop) return;
+    modalBackdrop.style.display = 'none';
+  }
+
+  /* ========= Search helpers ========= */
+  let searchTimer = null;
+  function debouncedSearch(){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { doSearch(); }, 450);
+  }
+  function doSearch(){
+    searchQ = document.getElementById('searchTop')?.value || document.getElementById('search')?.value || '';
+    if(currentView !== 'products') navTo('products');
+    renderProducts();
+  }
+
+  /* ========= Product detail page rendering ========= */
+  function renderCartPage(){
+    if(currentView !== 'cart') return;
+    const container = document.getElementById('cartItems');
+    const summary = document.getElementById('cartSummary');
+    if(!container) return;
+    container.innerHTML = '';
+    if(cart.length === 0){ container.innerHTML = '<div class="muted">Your cart is empty.</div>'; summary.innerHTML = ''; updateNavCount(); return; }
+    let total = 0;
+    cart.forEach((it)=>{
+      total += it.price * it.qty;
+      const div = document.createElement('div'); div.className = 'cart-item';
+      div.innerHTML = `<img src="${it.image}" alt="${escapeHtml(it.title)}"><div><div style="font-weight:800">${escapeHtml(it.title)}</div><div class="muted">₹${it.price} × ${it.qty}</div></div><div style="margin-left:auto;display:flex;flex-direction:column;gap:6px"><button onclick="changeQty('${it.id}',1)">＋</button><button onclick="changeQty('${it.id}',-1)">－</button></div>`;
+      container.appendChild(div);
+    });
+    summary.innerHTML = `<div style="font-weight:800">Total: ₹${total}</div>`;
+    updateNavCount();
+  }
+
+  /* ========= Contact form (demo) ========= */
+  function submitContact(e){
+    e.preventDefault();
+    const name = document.getElementById('contactName').value.trim();
+    const email = document.getElementById('contactEmail').value.trim();
+    const message = document.getElementById('contactMessage').value.trim();
+    if(!name || !email || !message) return alert('Please fill all fields');
+    const contacts = JSON.parse(localStorage.getItem(STORAGE.contacts) || '[]');
+    contacts.push({ name, email, message, date: new Date().toISOString() });
+    localStorage.setItem(STORAGE.contacts, JSON.stringify(contacts));
+    e.target.reset(); toast('Message received — thanks!');
+  }
+
+  /* ========= Helpers & Utilities ========= */
+  function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function capitalize(s){ return s && s[0].toUpperCase() + s.slice(1); }
+  function toast(msg){ const t = document.createElement('div'); t.textContent = msg; t.style.position='fixed'; t.style.right='20px'; t.style.bottom='20px'; t.style.zIndex=9999; t.style.background='linear-gradient(90deg,#0b73ff,#06b6d4)'; t.style.color='#fff'; t.style.padding='10px 14px'; t.style.borderRadius='10px'; t.style.boxShadow='0 8px 20px rgba(2,6,23,0.2)'; document.body.appendChild(t); setTimeout(()=> t.style.opacity='0.02',1600); setTimeout(()=> t.remove(),2000); }
+  function updateNavCount(){ const n = cart.reduce((s,i)=>s+i.qty,0); cartCountEl.textContent = n; }
+
+  /* ========= Navigation (SPA style) ========= */
+  function navTo(view){
+    currentView = view;
+    // hide all
+    Object.values(sections).forEach(s => s.classList.add('hidden'));
+    // show the requested
+    if(view === 'home') sections.home.classList.remove('hidden');
+    if(view === 'products'){ sections.products.classList.remove('hidden'); renderProducts(); }
+    if(view === 'productDetail') sections.productDetail.classList.remove('hidden');
+    if(view === 'cart'){ sections.cart.classList.remove('hidden'); renderCartPage(); }
+    if(view === 'about') sections.about.classList.remove('hidden');
+    if(view === 'contact') sections.contact.classList.remove('hidden');
+    // update sidebar panel presence (for small screens we keep layout simple)
+    // scroll top for better UX
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ========= Init ========= */
+  function init(){
+    // load initial state
+    products = loadProducts();
+    cart = loadCart();
+    renderCategories();
+    renderFeatured();
+    renderCartPreview();
+    updateNavCount();
+    // default view
+    navTo('home');
+
+    // expose some functions globally for button onclick in HTML
+    window.addToCart = addToCart;
+    window.changeQty = changeQty;
+    window.openProduct = openProduct;
+    window.openQuickModal = openQuickModal;
+    window.copyProductLink = () => { navigator.clipboard?.writeText(location.href).then(()=>toast('Link copied')) };
+    // close modal by escape key
+    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeModal(); });
+  }
+
+  // helper: load cart from localStorage
+  function loadCart(){ const raw = localStorage.getItem(STORAGE.cart); return raw ? JSON.parse(raw) : []; }
+  // render cart UI helper called externally sometimes
+  function renderCartPreview(){ cart = loadCart(); renderCartPreviewInner(); }
+  function renderCartPreviewInner(){
+    // same as renderCartPreview but local to avoid recursion
+    cartPreview.innerHTML = '';
+    if(cart.length === 0){ cartPreview.innerHTML = '<div class="muted">Cart is empty</div>'; cartTotalEl.textContent = '₹0'; cartCountEl.textContent = '0'; return; }
+    let total = 0;
+    cart.forEach(it => {
+      total += it.price * it.qty;
+      const div = document.createElement('div'); div.className = 'cart-item';
+      div.innerHTML = `<img src="${it.image}" alt="${escapeHtml(it.title)}"><div style="flex:1"><div style="font-weight:700">${escapeHtml(it.title)}</div><div class="muted">₹${it.price} × ${it.qty}</div></div><div class="qty-controls"><button onclick="changeQty('${it.id}',1)">＋</button><button onclick="changeQty('${it.id}',-1)">－</button></div>`;
+      cartPreview.appendChild(div);
+    });
+    cartTotalEl.textContent = '₹' + total;
+    cartCountEl.textContent = cart.reduce((s,i)=>s+i.qty,0);
+  }
+
+  // render cart page version (for view)
+  function renderCartPage(){ cart = loadCart(); const container = document.getElementById('cartItems'); const summary = document.getElementById('cartSummary'); if(!container) return; container.innerHTML = ''; if(cart.length === 0){ container.innerHTML = '<div class="muted">Your cart is empty.</div>'; summary.innerHTML = ''; updateNavCount(); return; } let total = 0; cart.forEach(it => { total += it.qty * it.price; const div = document.createElement('div'); div.className = 'cart-item'; div.innerHTML = `<img src="${it.image}" alt="${escapeHtml(it.title)}"><div><div style="font-weight:800">${escapeHtml(it.title)}</div><div class="muted">₹${it.price} × ${it.qty}</div></div><div style="margin-left:auto;display:flex;flex-direction:column;gap:6px"><button onclick="changeQty('${it.id}',1)">＋</button><button onclick="changeQty('${it.id}',-1)">－</button></div>`; container.appendChild(div); }); summary.innerHTML = `<div style="font-weight:800">Total: ₹${total}</div>`; updateNavCount(); }
+
+  // ensure initial save functions exist
+  function saveCartState(){ localStorage.setItem(STORAGE.cart, JSON.stringify(cart)); updateNavCount(); }
+
+  // Small improvement: renderCartPreview on start
+  init();
+  </script>
+</body>
+</html>
